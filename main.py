@@ -1,51 +1,69 @@
 import requests
 import schedule
 import time
+import os
 from datetime import datetime
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
-CHANNEL_ID = "@Pricee_Iran_bot"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 def get_prices():
     try:
         url = "https://tgju.org"
         headers = {"User-Agent": "Mozilla/5.0"}
         r = requests.get(url, headers=headers, timeout=10)
+        text = r.text
         
-        # قیمت‌ها رو استخراج کن
+        # استخراج قیمت‌ها
         import re
         
-        dollar = re.search(r'price-dollar.*?(\d+)', r.text)
-        gold = re.search(r'geram18.*?(\d+)', r.text)
-        oil = re.search(r'oil.*?(\d+)', r.text)
-        tether = re.search(r'tether.*?(\d+)', r.text)
-        ton = re.search(r'ton.*?(\d+)', r.text)
+        prices = {}
+        
+        # دلار
+        match = re.search(r'price_dollar_rl["\']:["\']?(\d+)', text)
+        prices['dollar'] = match.group(1) if match else "---"
+        
+        # طلا
+        match = re.search(r'price_geram18["\']:["\']?(\d+)', text)
+        prices['gold'] = match.group(1) if match else "---"
+        
+        # نفت
+        match = re.search(r'price_oil["\']:["\']?(\d+)', text)
+        prices['oil'] = match.group(1) if match else "---"
+        
+        # تتر
+        match = re.search(r'price_tether["\']:["\']?(\d+)', text)
+        prices['tether'] = match.group(1) if match else "---"
+        
+        # تون
+        match = re.search(r'price_ton["\']:["\']?(\d+)', text)
+        prices['ton'] = match.group(1) if match else "---"
         
         msg = "📊 قیمت لحظه‌ای\n\n"
-        msg += "💵 دلار: " + (dollar.group(1) if dollar else "---") + " ریال\n"
-        msg += "🥇 طلای ۱۸ عیار: " + (gold.group(1) if gold else "---") + " ریال\n"
-        msg += "🛢 نفت: " + (oil.group(1) if oil else "---") + " ریال\n"
-        msg += "💎 تتر: " + (tether.group(1) if tether else "---") + " ریال\n"
-        msg += "📦 تون (گرام): " + (ton.group(1) if ton else "---") + " ریال\n"
+        msg += f"💵 دلار: {prices['dollar']} ریال\n"
+        msg += f"🥇 طلای ۱۸ عیار: {prices['gold']} ریال\n"
+        msg += f"🛢 نفت: {prices['oil']} ریال\n"
+        msg += f"💎 تتر: {prices['tether']} ریال\n"
+        msg += f"📦 تون (گرام): {prices['ton']} ریال\n"
         
         return msg
-    except:
+    except Exception as e:
         return None
 
 def send_message(text):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": CHANNEL_ID, "text": text})
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        requests.post(url, json={"chat_id": CHANNEL_ID, "text": text})
+    except:
+        pass
 
 def job():
     msg = get_prices()
     if msg:
         send_message(msg)
-        print("✅ پیام ارسال شد!")
 
-# هر 12 ساعت یکبار اجرا شو
 schedule.every(12).hours.do(job)
 
-print("ربات شروع به کار کرد!")
 job()
 
 while True:
