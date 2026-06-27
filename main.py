@@ -2,69 +2,45 @@ import requests
 import schedule
 import time
 import os
-from datetime import datetime
+import json
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 def get_prices():
     try:
-        url = "https://tgju.org"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=10)
-        text = r.text
+        url = "https://api.nobitex.ir/market/stats/?srcCurrency=btc&dstCurrency=rls"
+        r = requests.get(url, timeout=10)
+        data = r.json()
         
-        # استخراج قیمت‌ها
-        import re
-        
-        prices = {}
-        
-        # دلار
-        match = re.search(r'price_dollar_rl["\']:["\']?(\d+)', text)
-        prices['dollar'] = match.group(1) if match else "---"
-        
-        # طلا
-        match = re.search(r'price_geram18["\']:["\']?(\d+)', text)
-        prices['gold'] = match.group(1) if match else "---"
-        
-        # نفت
-        match = re.search(r'price_oil["\']:["\']?(\d+)', text)
-        prices['oil'] = match.group(1) if match else "---"
-        
-        # تتر
-        match = re.search(r'price_tether["\']:["\']?(\d+)', text)
-        prices['tether'] = match.group(1) if match else "---"
-        
-        # تون
-        match = re.search(r'price_ton["\']:["\']?(\d+)', text)
-        prices['ton'] = match.group(1) if match else "---"
-        
+        # این API قیمت‌های دقیق تری داره
         msg = "📊 قیمت لحظه‌ای\n\n"
-        msg += f"💵 دلار: {prices['dollar']} ریال\n"
-        msg += f"🥇 طلای ۱۸ عیار: {prices['gold']} ریال\n"
-        msg += f"🛢 نفت: {prices['oil']} ریال\n"
-        msg += f"💎 تتر: {prices['tether']} ریال\n"
-        msg += f"📦 تون (گرام): {prices['ton']} ریال\n"
+        msg += f"💵 دلار: {data.get('stats', {}).get('btc', {}).get('latest', 'N/A')} ریال\n"
+        msg += "✅ به‌روز شد: الآن\n"
         
         return msg
-    except Exception as e:
+    except:
         return None
 
 def send_message(text):
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        requests.post(url, json={"chat_id": CHANNEL_ID, "text": text})
-    except:
-        pass
+        requests.post(url, json={"chat_id": CHANNEL_ID, "text": text}, timeout=10)
+        print("✅ پیام ارسال شد")
+    except Exception as e:
+        print(f"❌ خطا: {e}")
 
 def job():
     msg = get_prices()
     if msg:
         send_message(msg)
+    else:
+        print("❌ قیمت‌ها دریافت نشد")
+
+print("🤖 ربات شروع شد")
+job()
 
 schedule.every(12).hours.do(job)
-
-job()
 
 while True:
     schedule.run_pending()
